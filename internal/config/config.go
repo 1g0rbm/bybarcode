@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	defaultBarcodeFilePath = "../../data/tmp/products_data_all.csv"
+	defaultBarcodeFilePath = "/data/products_data_all.csv"
 	defaultDBDsn           = ""
 )
 
