@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v2"
-	"io"
-	"os"
 
 	"bybarcode/internal/config"
 	"bybarcode/internal/db"

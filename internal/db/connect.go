@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -55,4 +56,14 @@ func (c *Connect) CreateCategory(ctx context.Context, name string) (int, error) 
 	}
 
 	return categoryId, nil
+}
+
+func (c *Connect) CreateAccountIfNotExist(ctx context.Context, id int, username string, firstName string, lastName string) error {
+	stmt, err := c.sql.PrepareContext(ctx, CreateAccountIfNotExist())
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecContext(ctx, id, username, firstName, lastName)
+	return err
 }

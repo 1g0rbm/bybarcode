@@ -8,11 +8,12 @@ import (
 
 const (
 	defaultBarcodeFilePath = "/data/products_data_all.csv"
-	defaultDBDsn           = ""
+	defaultAddress         = "127.0.0.1:8080"
 )
 
 type ApiConfig struct {
-	DBDsn string
+	DBDsn   string
+	Address string
 }
 
 type CliConfig struct {
@@ -20,15 +21,28 @@ type CliConfig struct {
 	BarcodeFilePath string
 }
 
+type BotConfig struct {
+	Token string
+	DBDsn string
+}
+
+func NewBotConfig() *BotConfig {
+	return &BotConfig{
+		Token: getEnvString("TELEGRAM_BOT_TOKEN", ""),
+		DBDsn: getEnvString("POSTGRESQL_URL", ""),
+	}
+}
+
 func NewApiConfig() *ApiConfig {
 	return &ApiConfig{
-		DBDsn: getEnvString("DATABASE_DSN", defaultDBDsn),
+		DBDsn:   getEnvString("POSTGRESQL_URL", ""),
+		Address: getEnvString("API_ADDRESS", defaultAddress),
 	}
 }
 
 func NewCliConfig() *CliConfig {
 	return &CliConfig{
-		DBDsn:           getEnvString("POSTGRESQL_URL", defaultDBDsn),
+		DBDsn:           getEnvString("POSTGRESQL_URL", ""),
 		BarcodeFilePath: getEnvString("BARCODE_FILE_PATH", defaultBarcodeFilePath),
 	}
 }
