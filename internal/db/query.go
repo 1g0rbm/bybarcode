@@ -33,3 +33,15 @@ WHERE NOT EXISTS (
 `
 	return strings.Trim(query, " ")
 }
+
+func findAccount() string {
+	return `SELECT * FROM account where id = $1`
+}
+
+func CreateSession() string {
+	query := `
+        INSERT INTO sessions (id, token, refresh_token, account_id, expire_at, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`
+
+	return strings.Trim(query, " ")
+}

@@ -1,8 +1,12 @@
 package db
 
 import (
+	"bybarcode/internal/auth"
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/jackc/pgx/v5"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -65,5 +69,53 @@ func (c *Connect) CreateAccountIfNotExist(ctx context.Context, id int, username 
 	}
 
 	_, err = stmt.ExecContext(ctx, id, username, firstName, lastName)
+	return err
+}
+
+func (c *Connect) CreateSession(ctx context.Context, session auth.Session) error {
+	tx, err := c.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	stmtCheck, err := c.sql.PrepareContext(ctx, findAccount())
+	if err != nil {
+		return err
+	}
+
+	acc := auth.Account{}
+	err = stmtCheck.
+		QueryRowContext(ctx, session.AccountID).
+		Scan(&acc.ID, &acc.FirstName, &acc.LastName, &acc.Username)
+
+	if errors.As(err, &pgx.ErrNoRows) {
+		return fmt.Errorf("there is no account with id %d", session.AccountID)
+	} else if err != nil {
+		return err
+	}
+
+	stmtInsert, err := c.sql.PrepareContext(ctx, CreateSession())
+	if err != nil {
+		return err
+	}
+
+	_, err = stmtInsert.ExecContext(
+		ctx,
+		session.ID,
+		session.Token,
+		session.RefreshToken,
+		session.AccountID,
+		session.ExpireAt,
+		session.CreatedAt,
+		session.UpdatedAt,
+	)
+
 	return err
 }

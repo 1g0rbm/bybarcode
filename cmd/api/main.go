@@ -1,14 +1,17 @@
 package main
 
 import (
-	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 
+	"bybarcode/internal/auth"
 	"bybarcode/internal/config"
 	"bybarcode/internal/db"
 )
@@ -44,6 +47,55 @@ func main() {
 		_, err := w.Write([]byte(`{"status": "ok"}`))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
+		}
+	})
+
+	r.Post("/api/v1/auth", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		var uid auth.UserId
+		if err := uid.Decode(r.Body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write([]byte(err.Error()))
+			if err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		session := auth.Session{
+			ID:           uuid.New(),
+			Token:        uuid.New(),
+			RefreshToken: uuid.New(),
+			AccountID:    uid.Value,
+			ExpireAt:     time.Now().Add(24 * time.Hour),
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+		}
+
+		if err := conn.CreateSession(r.Context(), session); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write([]byte(err.Error()))
+			if err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		b, err := session.Encode()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, err = w.Write([]byte(err.Error()))
+			if err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write(b)
+		if err != nil {
+			panic(err)
 		}
 	})
 
