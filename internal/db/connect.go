@@ -122,7 +122,7 @@ func (c *Connect) CreateSession(ctx context.Context, accountId int64) (auth.Sess
 		return session, err
 	}
 
-	stmtSessionCheck, err := c.sql.PrepareContext(ctx, findNotExpiredSession())
+	stmtSessionCheck, err := c.sql.PrepareContext(ctx, findNotExpiredSessionByAccountId())
 	if err != nil {
 		return session, err
 	}
@@ -169,6 +169,29 @@ func (c *Connect) CreateSession(ctx context.Context, accountId int64) (auth.Sess
 		session.CreatedAt,
 		session.UpdatedAt,
 	)
+
+	return session, err
+}
+
+func (c *Connect) FindNotExpiredSession(ctx context.Context, token string) (auth.Session, error) {
+	session := auth.Session{}
+
+	stmt, err := c.sql.PrepareContext(ctx, findNotExpiredSessionByToken())
+	if err != nil {
+		return session, err
+	}
+
+	err = stmt.
+		QueryRowContext(ctx, token).
+		Scan(
+			&session.ID,
+			&session.Token,
+			&session.RefreshToken,
+			&session.AccountID,
+			&session.ExpireAt,
+			&session.CreatedAt,
+			&session.UpdatedAt,
+		)
 
 	return session, err
 }
