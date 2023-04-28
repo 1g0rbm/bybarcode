@@ -84,7 +84,10 @@ func (ab AppBot) onOpenHandler(msg *tgbotapi.Message) error {
 		return err
 	}
 
-	webAppURL.Query().Add("token", session.Token.String())
+	values := url.Values{}
+	values.Set("token", session.Token.String())
+	webAppURL.RawQuery = values.Encode()
+
 	inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonWebApp(
@@ -110,7 +113,7 @@ func (ab AppBot) errorHandler(msg *tgbotapi.Message, err error) {
 
 	response := tgbotapi.NewMessage(
 		msg.Chat.ID,
-		"Упс! При обработке сообщения возникла ошибка, попробуй позжк :(",
+		"Упс! При обработке сообщения возникла ошибка, попробуй позже :(",
 	)
 
 	ab.logger.Error().Msg(err.Error())
