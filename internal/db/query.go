@@ -45,3 +45,10 @@ func CreateSession() string {
 
 	return strings.Trim(query, " ")
 }
+
+func findNotExpiredSession() string {
+	query := `
+	SELECT * FROM sessions WHERE account_id = $1 AND expire_at > now()
+`
+	return strings.Trim(query, " ")
+}

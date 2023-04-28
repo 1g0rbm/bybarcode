@@ -1,7 +1,13 @@
 package message
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+import "strings"
 
-func OnStartMessage(chatID int64) tgbotapi.MessageConfig {
-	return tgbotapi.NewMessage(chatID, "Hi! Soon here will be an app to manage your shopping list.")
+func OnStartMessage() string {
+	msg := `
+Привет!
+Отправь мне штрихкод товара и я пришлю тебе информацию о нем.
+Чтобы открыть веб-приложение воспользуйся командой:
+/open
+`
+	return strings.Trim(msg, " ")
 }

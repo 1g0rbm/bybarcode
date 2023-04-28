@@ -1,15 +1,16 @@
 package main
 
 import (
-	"net/http"
-	"os"
-	"time"
-
+	"bybarcode/internal/bot"
+	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
+	"net/http"
+	"os"
 
 	"bybarcode/internal/auth"
 	"bybarcode/internal/config"
@@ -63,17 +64,8 @@ func main() {
 			return
 		}
 
-		session := auth.Session{
-			ID:           uuid.New(),
-			Token:        uuid.New(),
-			RefreshToken: uuid.New(),
-			AccountID:    uid.Value,
-			ExpireAt:     time.Now().Add(24 * time.Hour),
-			CreatedAt:    time.Now(),
-			UpdatedAt:    time.Now(),
-		}
-
-		if err := conn.CreateSession(r.Context(), session); err != nil {
+		acc, err := conn.FindAccountById(r.Context(), uid.Value)
+		if errors.As(err, &pgx.ErrNoRows) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err = w.Write([]byte(err.Error()))
 			if err != nil {
@@ -82,18 +74,48 @@ func main() {
 			return
 		}
 
-		b, err := session.Encode()
-		if err != nil {
+		tgSender := bot.NewSender(cfg.BotToken, cfg.TgApiUrl)
+		if err = tgSender.SendMessage(acc.ID, "/start"); err != nil {
+			fmt.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
-			_, err = w.Write([]byte(err.Error()))
+			_, err = w.Write([]byte("internal server error"))
 			if err != nil {
 				panic(err)
 			}
 			return
 		}
 
+		//session := auth.Session{
+		//	ID:           uuid.New(),
+		//	Token:        uuid.New(),
+		//	RefreshToken: uuid.New(),
+		//	AccountID:    uid.Value,
+		//	ExpireAt:     time.Now().Add(24 * time.Hour),
+		//	CreatedAt:    time.Now(),
+		//	UpdatedAt:    time.Now(),
+		//}
+		//
+		//if err := conn.CreateSession(r.Context(), session); err != nil {
+		//	w.WriteHeader(http.StatusBadRequest)
+		//	_, err = w.Write([]byte(err.Error()))
+		//	if err != nil {
+		//		panic(err)
+		//	}
+		//	return
+		//}
+		//
+		//b, err := session.Encode()
+		//if err != nil {
+		//	w.WriteHeader(http.StatusInternalServerError)
+		//	_, err = w.Write([]byte(err.Error()))
+		//	if err != nil {
+		//		panic(err)
+		//	}
+		//	return
+		//}
+
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write(b)
+		_, err = w.Write([]byte(""))
 		if err != nil {
 			panic(err)
 		}

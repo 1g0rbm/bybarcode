@@ -6,7 +6,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -72,10 +74,29 @@ func (c *Connect) CreateAccountIfNotExist(ctx context.Context, id int, username 
 	return err
 }
 
-func (c *Connect) CreateSession(ctx context.Context, session auth.Session) error {
+func (c *Connect) FindAccountById(ctx context.Context, accountId int64) (auth.Account, error) {
+	acc := auth.Account{}
+	stmtCheck, err := c.sql.PrepareContext(ctx, findAccount())
+	if err != nil {
+		return acc, err
+	}
+
+	err = stmtCheck.
+		QueryRowContext(ctx, accountId).
+		Scan(&acc.ID, &acc.FirstName, &acc.LastName, &acc.Username)
+	if err != nil {
+		return acc, err
+	}
+
+	return acc, nil
+}
+
+func (c *Connect) CreateSession(ctx context.Context, accountId int64) (auth.Session, error) {
+	session := auth.Session{}
+
 	tx, err := c.sql.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return session, err
 	}
 	defer func() {
 		if err != nil {
@@ -87,24 +108,56 @@ func (c *Connect) CreateSession(ctx context.Context, session auth.Session) error
 
 	stmtCheck, err := c.sql.PrepareContext(ctx, findAccount())
 	if err != nil {
-		return err
+		return session, err
 	}
 
 	acc := auth.Account{}
 	err = stmtCheck.
-		QueryRowContext(ctx, session.AccountID).
+		QueryRowContext(ctx, accountId).
 		Scan(&acc.ID, &acc.FirstName, &acc.LastName, &acc.Username)
 
 	if errors.As(err, &pgx.ErrNoRows) {
-		return fmt.Errorf("there is no account with id %d", session.AccountID)
+		return session, fmt.Errorf("there is no account with id %d", accountId)
 	} else if err != nil {
-		return err
+		return session, err
+	}
+
+	stmtSessionCheck, err := c.sql.PrepareContext(ctx, findNotExpiredSession())
+	if err != nil {
+		return session, err
+	}
+
+	err = stmtSessionCheck.
+		QueryRowContext(ctx, accountId).
+		Scan(
+			&session.ID,
+			&session.Token,
+			&session.RefreshToken,
+			&session.AccountID,
+			&session.ExpireAt,
+			&session.CreatedAt,
+			&session.UpdatedAt,
+		)
+	if err != nil && !errors.As(err, &pgx.ErrNoRows) {
+		return session, err
+	}
+
+	if session.ID != uuid.Nil {
+		return session, nil
 	}
 
 	stmtInsert, err := c.sql.PrepareContext(ctx, CreateSession())
 	if err != nil {
-		return err
+		return session, err
 	}
+
+	session.ID = uuid.New()
+	session.Token = uuid.New()
+	session.RefreshToken = uuid.New()
+	session.AccountID = accountId
+	session.ExpireAt = time.Now().Add(24 * time.Hour)
+	session.CreatedAt = time.Now()
+	session.UpdatedAt = time.Now()
 
 	_, err = stmtInsert.ExecContext(
 		ctx,
@@ -117,5 +170,5 @@ func (c *Connect) CreateSession(ctx context.Context, session auth.Session) error
 		session.UpdatedAt,
 	)
 
-	return err
+	return session, err
 }

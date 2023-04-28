@@ -12,8 +12,11 @@ const (
 )
 
 type ApiConfig struct {
-	DBDsn   string
-	Address string
+	DBDsn    string
+	Address  string
+	Gateway  string
+	BotToken string
+	TgApiUrl string
 }
 
 type CliConfig struct {
@@ -22,21 +25,26 @@ type CliConfig struct {
 }
 
 type BotConfig struct {
-	Token string
-	DBDsn string
+	Token       string
+	DBDsn       string
+	TgWebAppUrl string
 }
 
 func NewBotConfig() *BotConfig {
 	return &BotConfig{
-		Token: getEnvString("TELEGRAM_BOT_TOKEN", ""),
-		DBDsn: getEnvString("POSTGRESQL_URL", ""),
+		Token:       getEnvString("TELEGRAM_BOT_TOKEN", ""),
+		DBDsn:       getEnvString("POSTGRESQL_URL", ""),
+		TgWebAppUrl: getEnvString("TELEGRAM_BOT_WEB_APP_URL", ""),
 	}
 }
 
 func NewApiConfig() *ApiConfig {
 	return &ApiConfig{
-		DBDsn:   getEnvString("POSTGRESQL_URL", ""),
-		Address: getEnvString("API_ADDRESS", defaultAddress),
+		DBDsn:    getEnvString("POSTGRESQL_URL", ""),
+		Address:  getEnvString("APO_ADDRESS", defaultAddress),
+		Gateway:  getEnvString("API_GATEWAY", ""),
+		BotToken: getEnvString("TELEGRAM_BOT_TOKEN", ""),
+		TgApiUrl: getEnvString("TELEGRAM_API_URL", ""),
 	}
 }
 
