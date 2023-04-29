@@ -2,6 +2,7 @@ package db
 
 import (
 	"bybarcode/internal/auth"
+	"bybarcode/internal/products"
 	"context"
 	"database/sql"
 	"errors"
@@ -62,6 +63,20 @@ func (c *Connect) CreateCategory(ctx context.Context, name string) (int, error) 
 	}
 
 	return categoryId, nil
+}
+
+func (c *Connect) CreateProduct(ctx context.Context, p products.Product) (int64, error) {
+	stmt, err := c.sql.PrepareContext(ctx, CreateProduct())
+	if err != nil {
+		return 0, err
+	}
+
+	var productId int64
+	if err := stmt.QueryRowContext(ctx, p.Name, p.Upcean, p.CategoryId, p.BrandId).Scan(&productId); err != nil {
+		return 0, err
+	}
+
+	return productId, nil
 }
 
 func (c *Connect) CreateAccountIfNotExist(ctx context.Context, id int, username string, firstName string, lastName string) error {
@@ -194,4 +209,32 @@ func (c *Connect) FindNotExpiredSession(ctx context.Context, token string) (auth
 		)
 
 	return session, err
+}
+
+func (c *Connect) FindProductByBarcode(ctx context.Context, barcode int64) (products.Product, error) {
+	p := products.Product{
+		Category: &products.Category{},
+		Brand:    &products.Brand{},
+	}
+
+	stmt, err := c.sql.PrepareContext(ctx, findProductByBarcode())
+	if err != nil {
+		return p, err
+	}
+
+	err = stmt.
+		QueryRowContext(ctx, barcode).
+		Scan(
+			&p.ID,
+			&p.Name,
+			&p.Upcean,
+			&p.CategoryId,
+			&p.BrandId,
+			&p.Category.ID,
+			&p.Category.Name,
+			&p.Brand.ID,
+			&p.Brand.Name,
+		)
+
+	return p, err
 }

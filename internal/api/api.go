@@ -1,7 +1,11 @@
 package api
 
 import (
+	"bybarcode/internal/products"
+	"errors"
+	"github.com/jackc/pgx/v5"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -42,6 +46,9 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 
 	api.router.Get("/api/v1/ping", api.pingHandler)
 
+	api.router.Get("/api/v1/product/{barcode}", api.findProductByBarcode)
+	api.router.Post("/api/v1/product", api.addProduct)
+
 	return api
 }
 
@@ -50,12 +57,66 @@ func (aa *AppApi) Run() error {
 }
 
 func (aa *AppApi) pingHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
 	_, err := w.Write([]byte(`{"status": "ok"}`))
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte(err.Error()))
 	}
+}
+
+func (aa *AppApi) findProductByBarcode(w http.ResponseWriter, r *http.Request) {
+	barcode, err := strconv.ParseInt(chi.URLParam(r, "barcode"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	product, err := aa.db.FindProductByBarcode(r.Context(), barcode)
+	if errors.As(err, &pgx.ErrNoRows) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusNotFound, []byte("product not found"))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	b, err := product.Encode()
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	aa.sendJson(w, http.StatusOK, b)
+}
+
+func (aa *AppApi) addProduct(w http.ResponseWriter, r *http.Request) {
+	var p products.Product
+	if err := p.Decode(r.Body); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("bad request"))
+	}
+
+	productId, err := aa.db.CreateProduct(r.Context(), p)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	p.ID = productId
+	b, err := p.Encode()
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	aa.sendJson(w, http.StatusOK, b)
 }
 
 func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {
@@ -81,4 +142,14 @@ func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
+}
+
+func (aa *AppApi) sendJson(w http.ResponseWriter, status int, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if _, err := w.Write(body); err != nil {
+		aa.logger.Fatal().Msg(err.Error())
+	}
+
+	aa.logger.Debug().Msgf("Send response with headers %s and body %s", w.Header(), string(body))
 }

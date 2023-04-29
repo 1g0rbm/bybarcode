@@ -22,6 +22,16 @@ INSERT INTO brands
 	return strings.Trim(query, " ")
 }
 
+func CreateProduct() string {
+	query := `
+INSERT INTO products 
+    (name, upcean, category_id, brand_id) 
+	VALUES ($1, $2, $3, $4)
+	RETURNING id
+`
+	return strings.Trim(query, " ")
+}
+
 func CreateAccountIfNotExist() string {
 	query := `
 INSERT INTO account (id, username, first_name, last_name)
@@ -56,6 +66,16 @@ func findNotExpiredSessionByAccountId() string {
 func findNotExpiredSessionByToken() string {
 	query := `
 	SELECT * FROM sessions WHERE token = $1 AND expire_at > now()
+`
+	return strings.Trim(query, " ")
+}
+
+func findProductByBarcode() string {
+	query := `
+	SELECT p.id, p.name, p.upcean, p.category_id, p.brand_id, c.id, c.name , b.id, b.name FROM products p
+	LEFT JOIN categories c on p.category_id = c.id
+	LEFT JOIN brands b on b.id = p.brand_id
+	WHERE p.upcean = $1
 `
 	return strings.Trim(query, " ")
 }
