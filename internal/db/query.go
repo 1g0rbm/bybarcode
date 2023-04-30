@@ -89,3 +89,12 @@ func updateProductById() string {
 `
 	return strings.Trim(query, " ")
 }
+
+func deleteProductById() string {
+	query := `
+	DELETE FROM products
+	WHERE id = $1
+	RETURNING id;
+`
+	return strings.Trim(query, " ")
+}

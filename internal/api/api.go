@@ -49,6 +49,7 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	api.router.Get("/api/v1/product/{barcode}", api.findProductByBarcode)
 	api.router.Post("/api/v1/product", api.addProduct)
 	api.router.Put("/api/v1/product", api.updateProduct)
+	api.router.Delete("/api/v1/product/{id}", api.deleteProduct)
 
 	return api
 }
@@ -147,6 +148,29 @@ func (aa *AppApi) updateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	aa.sendJson(w, http.StatusOK, b)
+}
+
+func (aa *AppApi) deleteProduct(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	err = aa.db.DeleteProduct(r.Context(), id)
+	if errors.As(err, &pgx.ErrNoRows) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusNotFound, []byte("product not found"))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {

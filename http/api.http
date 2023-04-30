@@ -30,3 +30,7 @@ Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
   "category_id": 463,
   "brand_id": 909
 }
+
+### Delete product by id
+DELETE http://localhost:8080/api/v1/product/5006351
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927

@@ -79,6 +79,18 @@ func (c *Connect) UpdateProduct(ctx context.Context, p products.Product) (produc
 	return p, err
 }
 
+func (c *Connect) DeleteProduct(ctx context.Context, id int64) error {
+	stmt, err := c.sql.PrepareContext(ctx, deleteProductById())
+	if err != nil {
+		return err
+	}
+
+	var productId int64
+	err = stmt.QueryRowContext(ctx, id).Scan(&productId)
+
+	return err
+}
+
 func (c *Connect) CreateProduct(ctx context.Context, p products.Product) (int64, error) {
 	stmt, err := c.sql.PrepareContext(ctx, CreateProduct())
 	if err != nil {
