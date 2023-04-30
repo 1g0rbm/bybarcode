@@ -108,3 +108,13 @@ INSERT INTO shopping_lists
 `
 	return strings.Trim(query, " ")
 }
+
+func updateShoppingListById() string {
+	query := `
+	UPDATE shopping_lists
+	SET name = $1
+	WHERE id = $2
+	RETURNING id;
+`
+	return strings.Trim(query, " ")
+}

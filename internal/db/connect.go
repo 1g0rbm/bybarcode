@@ -285,3 +285,17 @@ func (c *Connect) CreateShoppingList(ctx context.Context, sl products.ShoppingLi
 
 	return listId, nil
 }
+
+func (c *Connect) UpdateShoppingList(ctx context.Context, sl products.ShoppingList) (products.ShoppingList, error) {
+	stmt, err := c.sql.PrepareContext(ctx, updateShoppingListById())
+	if err != nil {
+		return sl, err
+	}
+
+	var slId int64
+	err = stmt.
+		QueryRowContext(ctx, sl.Name, sl.ID).
+		Scan(&slId)
+
+	return sl, err
+}

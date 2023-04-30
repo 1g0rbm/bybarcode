@@ -53,6 +53,7 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	api.router.Delete("/api/v1/product/{id}", api.deleteProduct)
 
 	api.router.Post("/api/v1/shopping-list", api.addShoppingList)
+	api.router.Put("/api/v1/shopping-list", api.updateShoppingList)
 
 	return api
 }
@@ -176,6 +177,69 @@ func (aa *AppApi) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (aa *AppApi) addShoppingList(w http.ResponseWriter, r *http.Request) {
+	var sl products.ShoppingList
+	if err := sl.Decode(r.Body); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("bad request"))
+		return
+	}
+
+	slId, err := aa.db.CreateShoppingList(r.Context(), sl)
+	fmt.Println(err)
+	if errors.Is(err, db.ErrDuplicateKey) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte(err.Error()))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	sl.ID = slId
+	b, err := sl.Encode()
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	aa.sendJson(w, http.StatusOK, b)
+}
+
+func (aa *AppApi) updateShoppingList(w http.ResponseWriter, r *http.Request) {
+	var sl products.ShoppingList
+	if err := sl.Decode(r.Body); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("bad request"))
+		return
+	}
+
+	updSl, err := aa.db.UpdateShoppingList(r.Context(), sl)
+	fmt.Println(err)
+	if errors.As(err, &pgx.ErrNoRows) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusNotFound, []byte("shopping list not found"))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	b, err := updSl.Encode()
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	aa.sendJson(w, http.StatusOK, b)
+}
+
 func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
@@ -209,36 +273,4 @@ func (aa *AppApi) sendJson(w http.ResponseWriter, status int, body []byte) {
 	}
 
 	aa.logger.Debug().Msgf("Send response with headers %s and body %s", w.Header(), string(body))
-}
-
-func (aa *AppApi) addShoppingList(w http.ResponseWriter, r *http.Request) {
-	var sl products.ShoppingList
-	if err := sl.Decode(r.Body); err != nil {
-		aa.logger.Error().Msg(err.Error())
-		aa.sendJson(w, http.StatusBadRequest, []byte("bad request"))
-		return
-	}
-
-	slId, err := aa.db.CreateShoppingList(r.Context(), sl)
-	fmt.Println(err)
-	if errors.Is(err, db.ErrDuplicateKey) {
-		aa.logger.Error().Msg(err.Error())
-		aa.sendJson(w, http.StatusBadRequest, []byte(err.Error()))
-		return
-	}
-	if err != nil {
-		aa.logger.Error().Msg(err.Error())
-		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
-		return
-	}
-
-	sl.ID = slId
-	b, err := sl.Encode()
-	if err != nil {
-		aa.logger.Error().Msg(err.Error())
-		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
-		return
-	}
-
-	aa.sendJson(w, http.StatusOK, b)
 }

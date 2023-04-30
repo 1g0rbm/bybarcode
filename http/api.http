@@ -44,3 +44,14 @@ Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
   "name": "TEST_SHOPPING_LI",
   "account_id": 233575306
 }
+
+### Update shopping list
+PUT http://localhost:8080/api/v1/shopping-list
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "id": 1,
+  "name": "TEST_SHOPPING_LILI",
+  "account_id": 233575306
+}
