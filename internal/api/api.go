@@ -48,6 +48,7 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 
 	api.router.Get("/api/v1/product/{barcode}", api.findProductByBarcode)
 	api.router.Post("/api/v1/product", api.addProduct)
+	api.router.Put("/api/v1/product", api.updateProduct)
 
 	return api
 }
@@ -110,6 +111,35 @@ func (aa *AppApi) addProduct(w http.ResponseWriter, r *http.Request) {
 
 	p.ID = productId
 	b, err := p.Encode()
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	aa.sendJson(w, http.StatusOK, b)
+}
+
+func (aa *AppApi) updateProduct(w http.ResponseWriter, r *http.Request) {
+	var p products.Product
+	if err := p.Decode(r.Body); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("bad request"))
+	}
+
+	updP, err := aa.db.UpdateProduct(r.Context(), p)
+	if errors.As(err, &pgx.ErrNoRows) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusNotFound, []byte("product not found"))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	b, err := updP.Encode()
 	if err != nil {
 		aa.logger.Error().Msg(err.Error())
 		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))

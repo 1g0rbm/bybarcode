@@ -65,6 +65,20 @@ func (c *Connect) CreateCategory(ctx context.Context, name string) (int, error) 
 	return categoryId, nil
 }
 
+func (c *Connect) UpdateProduct(ctx context.Context, p products.Product) (products.Product, error) {
+	stmt, err := c.sql.PrepareContext(ctx, updateProductById())
+	if err != nil {
+		return p, err
+	}
+
+	var productId int64
+	err = stmt.
+		QueryRowContext(ctx, p.Name, p.Upcean, p.CategoryId, p.BrandId, p.ID).
+		Scan(&productId)
+
+	return p, err
+}
+
 func (c *Connect) CreateProduct(ctx context.Context, p products.Product) (int64, error) {
 	stmt, err := c.sql.PrepareContext(ctx, CreateProduct())
 	if err != nil {

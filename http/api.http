@@ -17,3 +17,16 @@ Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
   "category_id": 463,
   "brand_id": 909
 }
+
+### Update product
+PUT http://localhost:8080/api/v1/product
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "id": 5006351,
+  "name": "NO_TEST",
+  "upcean": 49705696088,
+  "category_id": 463,
+  "brand_id": 909
+}

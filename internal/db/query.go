@@ -79,3 +79,13 @@ func findProductByBarcode() string {
 `
 	return strings.Trim(query, " ")
 }
+
+func updateProductById() string {
+	query := `
+	UPDATE products
+	SET name = $1, upcean = $2, category_id = $3, brand_id = $4
+	WHERE id = $5
+	RETURNING id;
+`
+	return strings.Trim(query, " ")
+}
