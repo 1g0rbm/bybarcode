@@ -34,3 +34,13 @@ Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
 ### Delete product by id
 DELETE http://localhost:8080/api/v1/product/5006351
 Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Creatre shopping list
+POST http://localhost:8080/api/v1/shopping-list
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "name": "TEST_SHOPPING_LI",
+  "account_id": 233575306
+}

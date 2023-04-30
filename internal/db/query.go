@@ -98,3 +98,13 @@ func deleteProductById() string {
 `
 	return strings.Trim(query, " ")
 }
+
+func CreateShoppingList() string {
+	query := `
+INSERT INTO shopping_lists 
+    (name, account_id) 
+	VALUES ($1, $2)
+	RETURNING id
+`
+	return strings.Trim(query, " ")
+}

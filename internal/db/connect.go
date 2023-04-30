@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -17,6 +18,8 @@ import (
 type Connect struct {
 	sql *sql.DB
 }
+
+var ErrDuplicateKey error
 
 func NewConnect(driverName string, dsn string) (Connect, error) {
 	db, err := sql.Open(driverName, dsn)
@@ -263,4 +266,22 @@ func (c *Connect) FindProductByBarcode(ctx context.Context, barcode int64) (prod
 		)
 
 	return p, err
+}
+
+func (c *Connect) CreateShoppingList(ctx context.Context, sl products.ShoppingList) (int64, error) {
+	stmt, err := c.sql.PrepareContext(ctx, CreateShoppingList())
+	if err != nil {
+		return 0, err
+	}
+
+	var listId int64
+	if err := stmt.QueryRowContext(ctx, sl.Name, sl.AccountId).Scan(&listId); err != nil {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			ErrDuplicateKey = fmt.Errorf("duplciate shopping list name %s", sl.Name)
+			return 0, ErrDuplicateKey
+		}
+		return 0, err
+	}
+
+	return listId, nil
 }

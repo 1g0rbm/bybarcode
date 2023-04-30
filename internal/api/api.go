@@ -3,6 +3,7 @@ package api
 import (
 	"bybarcode/internal/products"
 	"errors"
+	"fmt"
 	"github.com/jackc/pgx/v5"
 	"net/http"
 	"strconv"
@@ -50,6 +51,8 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	api.router.Post("/api/v1/product", api.addProduct)
 	api.router.Put("/api/v1/product", api.updateProduct)
 	api.router.Delete("/api/v1/product/{id}", api.deleteProduct)
+
+	api.router.Post("/api/v1/shopping-list", api.addShoppingList)
 
 	return api
 }
@@ -206,4 +209,36 @@ func (aa *AppApi) sendJson(w http.ResponseWriter, status int, body []byte) {
 	}
 
 	aa.logger.Debug().Msgf("Send response with headers %s and body %s", w.Header(), string(body))
+}
+
+func (aa *AppApi) addShoppingList(w http.ResponseWriter, r *http.Request) {
+	var sl products.ShoppingList
+	if err := sl.Decode(r.Body); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("bad request"))
+		return
+	}
+
+	slId, err := aa.db.CreateShoppingList(r.Context(), sl)
+	fmt.Println(err)
+	if errors.Is(err, db.ErrDuplicateKey) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte(err.Error()))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	sl.ID = slId
+	b, err := sl.Encode()
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	aa.sendJson(w, http.StatusOK, b)
 }
