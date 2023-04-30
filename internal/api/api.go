@@ -2,6 +2,7 @@ package api
 
 import (
 	"bybarcode/internal/products"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
@@ -52,8 +53,10 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	api.router.Put("/api/v1/product", api.updateProduct)
 	api.router.Delete("/api/v1/product/{id}", api.deleteProduct)
 
+	api.router.Get("/api/v1/shopping-lists/{account_id}", api.getShoppingListsByAccount)
 	api.router.Post("/api/v1/shopping-list", api.addShoppingList)
 	api.router.Put("/api/v1/shopping-list", api.updateShoppingList)
+	api.router.Delete("/api/v1/shopping-list/{id}", api.deleteShoppingList)
 
 	return api
 }
@@ -238,6 +241,56 @@ func (aa *AppApi) updateShoppingList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	aa.sendJson(w, http.StatusOK, b)
+}
+
+func (aa *AppApi) getShoppingListsByAccount(w http.ResponseWriter, r *http.Request) {
+	accountId, err := strconv.ParseInt(chi.URLParam(r, "account_id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	lists, err := aa.db.GetShoppingListsByAccount(r.Context(), accountId)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(lists); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	fmt.Println(lists)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
+func (aa *AppApi) deleteShoppingList(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	err = aa.db.DeleteShoppingList(r.Context(), id)
+	if errors.As(err, &pgx.ErrNoRows) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusNotFound, []byte("shopping list not found"))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {

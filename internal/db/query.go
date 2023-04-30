@@ -99,7 +99,7 @@ func deleteProductById() string {
 	return strings.Trim(query, " ")
 }
 
-func CreateShoppingList() string {
+func createShoppingList() string {
 	query := `
 INSERT INTO shopping_lists 
     (name, account_id) 
@@ -114,6 +114,19 @@ func updateShoppingListById() string {
 	UPDATE shopping_lists
 	SET name = $1
 	WHERE id = $2
+	RETURNING id;
+`
+	return strings.Trim(query, " ")
+}
+
+func getShoppingListsByAccount() string {
+	return `SELECT id, name FROM shopping_lists WHERE account_id = $1`
+}
+
+func deleteShoppingListById() string {
+	query := `
+	DELETE FROM shopping_lists
+	WHERE id = $1
 	RETURNING id;
 `
 	return strings.Trim(query, " ")

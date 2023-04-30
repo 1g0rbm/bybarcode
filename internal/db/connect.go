@@ -269,7 +269,7 @@ func (c *Connect) FindProductByBarcode(ctx context.Context, barcode int64) (prod
 }
 
 func (c *Connect) CreateShoppingList(ctx context.Context, sl products.ShoppingList) (int64, error) {
-	stmt, err := c.sql.PrepareContext(ctx, CreateShoppingList())
+	stmt, err := c.sql.PrepareContext(ctx, createShoppingList())
 	if err != nil {
 		return 0, err
 	}
@@ -298,4 +298,60 @@ func (c *Connect) UpdateShoppingList(ctx context.Context, sl products.ShoppingLi
 		Scan(&slId)
 
 	return sl, err
+}
+
+func (c *Connect) GetShoppingListsByAccount(ctx context.Context, accId int64) ([]products.ShoppingList, error) {
+	var (
+		id   int64
+		name string
+	)
+
+	stmt, err := c.sql.PrepareContext(ctx, getShoppingListsByAccount())
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := stmt.QueryContext(ctx, accId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(r *sql.Rows) {
+		if rErr := r.Close(); rErr != nil {
+			err = rErr
+		}
+	}(r)
+
+	var slm []products.ShoppingList
+	for r.Next() {
+		if err = r.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+
+		sl := products.ShoppingList{
+			ID:        id,
+			Name:      name,
+			AccountId: accId,
+		}
+
+		slm = append(slm, sl)
+	}
+
+	if err = r.Err(); err != nil {
+		return nil, err
+	}
+
+	return slm, err
+}
+
+func (c *Connect) DeleteShoppingList(ctx context.Context, id int64) error {
+	stmt, err := c.sql.PrepareContext(ctx, deleteShoppingListById())
+	if err != nil {
+		return err
+	}
+
+	var slId int64
+	err = stmt.QueryRowContext(ctx, id).Scan(&slId)
+
+	return err
 }
