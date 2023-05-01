@@ -2,6 +2,7 @@ package products
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 )
 
@@ -23,6 +24,33 @@ type Product struct {
 	BrandId    int64     `json:"brand_id"`
 	Category   *Category `json:"category,omitempty"`
 	Brand      *Brand    `json:"brand,omitempty"`
+}
+
+type ProductInList struct {
+	Product
+	Checked bool `json:"checked,omitempty"`
+}
+
+func (p *ProductInList) MarshalJSON() ([]byte, error) {
+	type Alias ProductInList
+	fmt.Println(p.Checked)
+	if p.Checked {
+		return json.Marshal(&struct {
+			Alias
+			Checked bool `json:"checked"`
+		}{
+			Alias:   (Alias)(*p),
+			Checked: p.Checked,
+		})
+	} else {
+		return json.Marshal(&struct {
+			Alias
+			Checked bool `json:"checked"`
+		}{
+			Alias:   (Alias)(*p),
+			Checked: p.Checked,
+		})
+	}
 }
 
 func (p *Product) Encode() ([]byte, error) {

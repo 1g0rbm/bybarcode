@@ -407,7 +407,7 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 	return err
 }
 
-func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]products.Product, error) {
+func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]products.ProductInList, error) {
 	stmt, err := c.sql.PrepareContext(ctx, getShoppingListProducts())
 	if err != nil {
 		return nil, err
@@ -425,24 +425,28 @@ func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]pr
 	}(r)
 
 	var (
-		pList      []products.Product
+		pList      []products.ProductInList
 		id         int64
 		name       string
 		barcode    int64
 		categoryId int64
 		brandId    int64
+		checked    bool
 	)
 	for r.Next() {
-		if err = r.Scan(&id, &name, &barcode, &categoryId, &brandId); err != nil {
+		if err = r.Scan(&id, &name, &barcode, &categoryId, &brandId, &checked); err != nil {
 			return nil, err
 		}
 
-		p := products.Product{
-			ID:         id,
-			Name:       name,
-			Upcean:     barcode,
-			CategoryId: categoryId,
-			BrandId:    brandId,
+		p := products.ProductInList{
+			Product: products.Product{
+				ID:         id,
+				Name:       name,
+				Upcean:     barcode,
+				CategoryId: categoryId,
+				BrandId:    brandId,
+			},
+			Checked: checked,
 		}
 
 		pList = append(pList, p)

@@ -146,7 +146,7 @@ func addProductToShoppingList() string {
 
 func getShoppingListProducts() string {
 	query := `
-	SELECT p.id, p.name, p.upcean, p.category_id, p.brand_id FROM products p
+	SELECT p.id, p.name, p.upcean, p.category_id, p.brand_id, slp.checked FROM products p
 	JOIN shopping_list__products slp on p.id = slp.product_id
 	WHERE slp.shopping_list_id = $1
 `
