@@ -58,9 +58,10 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	api.router.Put("/api/v1/shopping-list", api.updateShoppingList)
 	api.router.Delete("/api/v1/shopping-list/{id}", api.deleteShoppingList)
 
-	api.router.Get("/shopping-list/{id}/product", api.getShoppingListProducts)
-	api.router.Post("/shopping-list/{sl_id}/product/{barcode_or_id}", api.addProductToShoppingList)
-	api.router.Delete("/shopping-list/{sl_id}/product/{barcode_or_id}", api.deleteProductFromShoppingList)
+	api.router.Get("/api/v1/shopping-list/{id}/product", api.getShoppingListProducts)
+	api.router.Post("/api/v1/shopping-list/{sl_id}/product/{barcode_or_id}", api.addProductToShoppingList)
+	api.router.Delete("/api/v1/shopping-list/{sl_id}/product/{barcode_or_id}", api.deleteProductFromShoppingList)
+	api.router.Post("/api/v1/shopping-list/{sl_id}/product/{product_id}/check", api.toggleProductStateInShoppingList)
 
 	return api
 }
@@ -373,6 +374,36 @@ func (aa *AppApi) getShoppingListProducts(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+}
+
+func (aa *AppApi) toggleProductStateInShoppingList(w http.ResponseWriter, r *http.Request) {
+	slId, err := strconv.ParseInt(chi.URLParam(r, "sl_id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	pId, err := strconv.ParseInt(chi.URLParam(r, "product_id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	err = aa.db.ToggleProductStateInShoppingList(r.Context(), slId, pId)
+	if errors.As(err, &pgx.ErrNoRows) {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusNotFound, []byte(err.Error()))
+		return
+	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {

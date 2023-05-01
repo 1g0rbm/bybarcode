@@ -161,3 +161,13 @@ func deleteProductFromShoppingList() string {
 `
 	return strings.Trim(query, " ")
 }
+
+func toggleProductStateInList() string {
+	query := `
+	UPDATE shopping_list__products SET checked = NOT checked
+	WHERE shopping_list_id = $1 AND product_id = $2
+	RETURNING shopping_list_id, product_id
+`
+
+	return strings.Trim(query, " ")
+}

@@ -465,3 +465,18 @@ func (c *Connect) DeleteProductFromShoppingList(ctx context.Context, slId int64,
 
 	return err
 }
+
+func (c *Connect) ToggleProductStateInShoppingList(ctx context.Context, slId int64, pId int64) error {
+	stmt, err := c.sql.PrepareContext(ctx, toggleProductStateInList())
+	if err != nil {
+		return err
+	}
+
+	var (
+		_slId int64
+		_pId  int64
+	)
+	err = stmt.QueryRowContext(ctx, slId, pId).Scan(&_slId, &_pId)
+
+	return err
+}
