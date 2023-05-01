@@ -355,3 +355,54 @@ func (c *Connect) DeleteShoppingList(ctx context.Context, id int64) error {
 
 	return err
 }
+
+func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId int64, listId int64) error {
+	tx, err := c.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	productStmt, err := tx.PrepareContext(ctx, findProductByIdOrBarcode())
+	if err != nil {
+		return err
+	}
+
+	p := products.Product{}
+	err = productStmt.QueryRowContext(ctx, productId).Scan(&p.ID, &p.Name, &p.Upcean, &p.CategoryId, &p.BrandId)
+	if err != nil {
+		return err
+	}
+
+	slStmt, err := tx.PrepareContext(ctx, findShoppingListById())
+	if err != nil {
+		return err
+	}
+
+	sl := products.ShoppingList{}
+	err = slStmt.QueryRowContext(ctx, listId).Scan(&sl.ID, &sl.Name, &sl.AccountId)
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.PrepareContext(ctx, addProductToShoppingList())
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecContext(ctx, sl.ID, p.ID)
+	if err != nil && strings.Contains(err.Error(), "shopping_list__products_pkey") {
+		ErrDuplicateKey = fmt.Errorf("there is already exist product %s in list %s", p.Name, sl.Name)
+		return ErrDuplicateKey
+	}
+
+	err = tx.Commit()
+
+	return err
+}

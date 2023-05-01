@@ -71,3 +71,7 @@ Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
 ### Delete shopping list by id
 DELETE http://localhost:8080/api/v1/shopping-list/8
 Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Add product to shopping list
+POST http://localhost:8080/shopping-list/1/product/31216
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927

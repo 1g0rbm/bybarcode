@@ -80,6 +80,10 @@ func findProductByBarcode() string {
 	return strings.Trim(query, " ")
 }
 
+func findProductByIdOrBarcode() string {
+	return `SELECT id, name, upcean, category_id, brand_id FROM products WHERE id = $1 OR upcean = $1`
+}
+
 func updateProductById() string {
 	query := `
 	UPDATE products
@@ -119,6 +123,10 @@ func updateShoppingListById() string {
 	return strings.Trim(query, " ")
 }
 
+func findShoppingListById() string {
+	return `SELECT id, name, account_id FROM shopping_lists WHERE id = $1`
+}
+
 func getShoppingListsByAccount() string {
 	return `SELECT id, name FROM shopping_lists WHERE account_id = $1`
 }
@@ -130,4 +138,8 @@ func deleteShoppingListById() string {
 	RETURNING id;
 `
 	return strings.Trim(query, " ")
+}
+
+func addProductToShoppingList() string {
+	return `INSERT INTO shopping_list__products (shopping_list_id, product_id) VALUES ($1, $2)`
 }
