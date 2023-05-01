@@ -60,6 +60,7 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 
 	api.router.Get("/shopping-list/{id}/product", api.getShoppingListProducts)
 	api.router.Post("/shopping-list/{sl_id}/product/{barcode_or_id}", api.addProductToShoppingList)
+	api.router.Delete("/shopping-list/{sl_id}/product/{barcode_or_id}", api.deleteProductFromShoppingList)
 
 	return api
 }
@@ -315,6 +316,31 @@ func (aa *AppApi) addProductToShoppingList(w http.ResponseWriter, r *http.Reques
 		aa.sendJson(w, http.StatusBadRequest, []byte(err.Error()))
 		return
 	}
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (aa *AppApi) deleteProductFromShoppingList(w http.ResponseWriter, r *http.Request) {
+	slId, err := strconv.ParseInt(chi.URLParam(r, "sl_id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	pId, err := strconv.ParseInt(chi.URLParam(r, "barcode_or_id"), 10, 64)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	err = aa.db.DeleteProductFromShoppingList(r.Context(), slId, pId)
 	if err != nil {
 		aa.logger.Error().Msg(err.Error())
 		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))

@@ -153,3 +153,11 @@ func getShoppingListProducts() string {
 
 	return strings.Trim(query, " ")
 }
+
+func deleteProductFromShoppingList() string {
+	query := `
+	DELETE FROM shopping_list__products 
+	WHERE shopping_list_id = $1 AND product_id = $2
+`
+	return strings.Trim(query, " ")
+}

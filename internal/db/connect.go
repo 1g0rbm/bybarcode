@@ -374,23 +374,16 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 		return err
 	}
 
-	fmt.Println("ЯЯЯЯЯЯЯЯЯЯЯЯЯЯ")
-	fmt.Println(productId)
-
 	p := products.Product{}
 	err = productStmt.QueryRowContext(ctx, productId).Scan(&p.ID, &p.Name, &p.Upcean, &p.CategoryId, &p.BrandId)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("ЗЗЗЗЗЗЗЗЗЗЗЗ")
-
 	slStmt, err := tx.PrepareContext(ctx, findShoppingListById())
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("IIIIIIIIIIIII")
 
 	sl := products.ShoppingList{}
 	err = slStmt.QueryRowContext(ctx, listId).Scan(&sl.ID, &sl.Name, &sl.AccountId)
@@ -398,14 +391,10 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 		return err
 	}
 
-	fmt.Println("NNNNNNNNNNNNN")
-
 	stmt, err := tx.PrepareContext(ctx, addProductToShoppingList())
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("BBBBBBBBBBBBBBB")
 
 	_, err = stmt.ExecContext(ctx, sl.ID, p.ID)
 	if err != nil && strings.Contains(err.Error(), "shopping_list__products_pkey") {
@@ -464,4 +453,15 @@ func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]pr
 	}
 
 	return pList, err
+}
+
+func (c *Connect) DeleteProductFromShoppingList(ctx context.Context, slId int64, pId int64) error {
+	stmt, err := c.sql.PrepareContext(ctx, deleteProductFromShoppingList())
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecContext(ctx, slId, pId)
+
+	return err
 }
