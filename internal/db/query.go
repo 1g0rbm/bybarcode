@@ -143,3 +143,13 @@ func deleteShoppingListById() string {
 func addProductToShoppingList() string {
 	return `INSERT INTO shopping_list__products (shopping_list_id, product_id) VALUES ($1, $2)`
 }
+
+func getShoppingListProducts() string {
+	query := `
+	SELECT p.id, p.name, p.upcean, p.category_id, p.brand_id FROM products p
+	JOIN shopping_list__products slp on p.id = slp.product_id
+	WHERE slp.shopping_list_id = $1
+`
+
+	return strings.Trim(query, " ")
+}

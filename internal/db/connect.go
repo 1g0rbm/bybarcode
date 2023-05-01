@@ -374,16 +374,23 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 		return err
 	}
 
+	fmt.Println("ЯЯЯЯЯЯЯЯЯЯЯЯЯЯ")
+	fmt.Println(productId)
+
 	p := products.Product{}
 	err = productStmt.QueryRowContext(ctx, productId).Scan(&p.ID, &p.Name, &p.Upcean, &p.CategoryId, &p.BrandId)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("ЗЗЗЗЗЗЗЗЗЗЗЗ")
+
 	slStmt, err := tx.PrepareContext(ctx, findShoppingListById())
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("IIIIIIIIIIIII")
 
 	sl := products.ShoppingList{}
 	err = slStmt.QueryRowContext(ctx, listId).Scan(&sl.ID, &sl.Name, &sl.AccountId)
@@ -391,10 +398,14 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 		return err
 	}
 
+	fmt.Println("NNNNNNNNNNNNN")
+
 	stmt, err := tx.PrepareContext(ctx, addProductToShoppingList())
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("BBBBBBBBBBBBBBB")
 
 	_, err = stmt.ExecContext(ctx, sl.ID, p.ID)
 	if err != nil && strings.Contains(err.Error(), "shopping_list__products_pkey") {
@@ -405,4 +416,52 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 	err = tx.Commit()
 
 	return err
+}
+
+func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]products.Product, error) {
+	stmt, err := c.sql.PrepareContext(ctx, getShoppingListProducts())
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := stmt.QueryContext(ctx, slId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(r *sql.Rows) {
+		if rErr := r.Close(); rErr != nil {
+			err = rErr
+		}
+	}(r)
+
+	var (
+		pList      []products.Product
+		id         int64
+		name       string
+		barcode    int64
+		categoryId int64
+		brandId    int64
+	)
+	for r.Next() {
+		if err = r.Scan(&id, &name, &barcode, &categoryId, &brandId); err != nil {
+			return nil, err
+		}
+
+		p := products.Product{
+			ID:         id,
+			Name:       name,
+			Upcean:     barcode,
+			CategoryId: categoryId,
+			BrandId:    brandId,
+		}
+
+		pList = append(pList, p)
+	}
+
+	if err = r.Err(); err != nil {
+		return nil, err
+	}
+
+	return pList, err
 }
