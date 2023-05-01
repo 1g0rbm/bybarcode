@@ -3,6 +3,7 @@ package db
 import (
 	"bybarcode/internal/auth"
 	"bybarcode/internal/products"
+	"bybarcode/internal/stat"
 	"context"
 	"database/sql"
 	"errors"
@@ -402,6 +403,10 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 		return ErrDuplicateKey
 	}
 
+	if err = c.addedUpdStatisticByShoppingList(ctx, tx, listId); err != nil {
+		return err
+	}
+
 	err = tx.Commit()
 
 	return err
@@ -460,18 +465,48 @@ func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]pr
 }
 
 func (c *Connect) DeleteProductFromShoppingList(ctx context.Context, slId int64, pId int64) error {
-	stmt, err := c.sql.PrepareContext(ctx, deleteProductFromShoppingList())
+	tx, err := c.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	stmt, err := tx.PrepareContext(ctx, deleteProductFromShoppingList())
 	if err != nil {
 		return err
 	}
 
 	_, err = stmt.ExecContext(ctx, slId, pId)
 
+	if err = c.addedUpdStatisticByShoppingList(ctx, tx, slId); err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+
 	return err
 }
 
 func (c *Connect) ToggleProductStateInShoppingList(ctx context.Context, slId int64, pId int64) error {
-	stmt, err := c.sql.PrepareContext(ctx, toggleProductStateInList())
+	tx, err := c.sql.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	stmt, err := tx.PrepareContext(ctx, toggleProductStateInList())
 	if err != nil {
 		return err
 	}
@@ -480,7 +515,76 @@ func (c *Connect) ToggleProductStateInShoppingList(ctx context.Context, slId int
 		_slId int64
 		_pId  int64
 	)
-	err = stmt.QueryRowContext(ctx, slId, pId).Scan(&_slId, &_pId)
+	if err = stmt.QueryRowContext(ctx, slId, pId).Scan(&_slId, &_pId); err != nil {
+		return err
+	}
+
+	if err = c.addedUpdStatisticByShoppingList(ctx, tx, slId); err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+
+	return err
+}
+
+func (c *Connect) GetStatistic(ctx context.Context, from time.Time, to time.Time) ([]stat.Statistic, error) {
+	stmt, err := c.sql.PrepareContext(ctx, getStatistic())
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := stmt.QueryContext(ctx, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func(r *sql.Rows) {
+		if rErr := r.Close(); rErr != nil {
+			err = rErr
+		}
+	}(r)
+
+	var (
+		sList                []stat.Statistic
+		id                   int64
+		name                 string
+		slId                 int64
+		createdAt            time.Time
+		productsCount        int
+		checkedProductsCount int
+	)
+	for r.Next() {
+		if err = r.Scan(&id, &name, &slId, &createdAt, &productsCount, &checkedProductsCount); err != nil {
+			return nil, err
+		}
+
+		p := stat.Statistic{
+			ID:                   id,
+			ShoppingListName:     name,
+			ShoppingListId:       slId,
+			CreatedAt:            createdAt,
+			ProductsCount:        productsCount,
+			CheckedProductsCount: checkedProductsCount,
+		}
+
+		sList = append(sList, p)
+	}
+
+	if err = r.Err(); err != nil {
+		return nil, err
+	}
+
+	return sList, err
+}
+
+func (c *Connect) addedUpdStatisticByShoppingList(ctx context.Context, tx *sql.Tx, listId int64) error {
+	statStmt, err := tx.PrepareContext(ctx, updateStatByAddingProduct())
+	if err != nil {
+		return err
+	}
+
+	_, err = statStmt.ExecContext(ctx, listId)
 
 	return err
 }

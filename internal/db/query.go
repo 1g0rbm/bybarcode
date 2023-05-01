@@ -171,3 +171,35 @@ func toggleProductStateInList() string {
 
 	return strings.Trim(query, " ")
 }
+
+func updateStatByAddingProduct() string {
+	query := `
+	WITH counts AS (
+		SELECT COUNT(*) AS added_count, SUM(checked::int) AS checked_count
+		FROM shopping_list__products 
+		WHERE shopping_list_id = $1
+	)
+	INSERT INTO shopping_list_statistics (shopping_list_id, added_products_count, checked_products_count)
+	SELECT $1, added_count, checked_count 
+	FROM counts; 
+`
+	return strings.Trim(query, " ")
+}
+
+func getStatistic() string {
+	query := `
+	SELECT
+		sls.id,
+		sl.name,
+		sls.shopping_list_id,
+		sls.created_at,
+		sls.added_products_count,
+		sls.checked_products_count
+	FROM
+		shopping_list_statistics sls
+	JOIN shopping_lists sl on sl.id = sls.shopping_list_id
+	WHERE
+		sls.created_at BETWEEN $1 and $2;
+`
+	return strings.Trim(query, " ")
+}

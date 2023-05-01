@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -62,6 +63,8 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	api.router.Post("/api/v1/shopping-list/{sl_id}/product/{barcode_or_id}", api.addProductToShoppingList)
 	api.router.Delete("/api/v1/shopping-list/{sl_id}/product/{barcode_or_id}", api.deleteProductFromShoppingList)
 	api.router.Post("/api/v1/shopping-list/{sl_id}/product/{product_id}/check", api.toggleProductStateInShoppingList)
+
+	api.router.Get("/api/v1/statistic/{date_from}/{date_to}", api.getStatistic)
 
 	return api
 }
@@ -404,6 +407,41 @@ func (aa *AppApi) toggleProductStateInShoppingList(w http.ResponseWriter, r *htt
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (aa *AppApi) getStatistic(w http.ResponseWriter, r *http.Request) {
+	dateFromStr := chi.URLParam(r, "date_from")
+	dateToStr := chi.URLParam(r, "date_to")
+
+	dateFrom, err := time.Parse("2006-01-02T15:04:05", dateFromStr)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("Invalid date_from format"))
+		return
+	}
+
+	dateTo, err := time.Parse("2006-01-02T15:04:05", dateToStr)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusBadRequest, []byte("Invalid date_to format"))
+		return
+	}
+
+	list, err := aa.db.GetStatistic(r.Context(), dateFrom, dateTo)
+	if err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(list); err != nil {
+		aa.logger.Error().Msg(err.Error())
+		aa.sendJson(w, http.StatusInternalServerError, []byte("internal server error"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
 func (aa *AppApi) authMiddleware(h http.Handler) http.Handler {
