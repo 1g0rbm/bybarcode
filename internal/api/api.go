@@ -2,6 +2,7 @@ package api
 
 import (
 	"bybarcode/internal/products"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -70,7 +71,16 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 }
 
 func (aa *AppApi) Run() error {
+	aa.logger.Info().Msgf("Api was started on host %s \n", aa.cfg.Address)
 	return aa.server.ListenAndServe()
+}
+
+func (aa *AppApi) ShoutDown(ctx context.Context) error {
+	if err := aa.db.Close(); err != nil {
+		return err
+	}
+
+	return aa.server.Shutdown(ctx)
 }
 
 func (aa *AppApi) pingHandler(w http.ResponseWriter, r *http.Request) {
