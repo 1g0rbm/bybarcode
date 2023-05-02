@@ -50,22 +50,27 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 
 	api.router.Get("/api/v1/ping", api.pingHandler)
 
-	api.router.Get("/api/v1/product/{barcode}", api.findProductByBarcode)
-	api.router.Post("/api/v1/product", api.addProduct)
-	api.router.Put("/api/v1/product", api.updateProduct)
-	api.router.Delete("/api/v1/product/{id}", api.deleteProduct)
+	api.router.Route("/api/v1/product", func(r chi.Router) {
+		r.Get("/{barcode}", api.findProductByBarcode)
+		r.Post("/", api.addProduct)
+		r.Put("/", api.updateProduct)
+		r.Delete("/{id}", api.deleteProduct)
+	})
 
-	api.router.Get("/api/v1/shopping-lists/{account_id}", api.getShoppingListsByAccount)
-	api.router.Post("/api/v1/shopping-list", api.addShoppingList)
-	api.router.Put("/api/v1/shopping-list", api.updateShoppingList)
-	api.router.Delete("/api/v1/shopping-list/{id}", api.deleteShoppingList)
+	api.router.Route("/api/v1/shopping-list", func(r chi.Router) {
+		r.Get("/{account_id}", api.getShoppingListsByAccount)
+		r.Post("/", api.addShoppingList)
+		r.Put("/", api.updateShoppingList)
+		r.Delete("/{id}", api.deleteShoppingList)
+		r.Get("/{id}/product", api.getShoppingListProducts)
+		r.Post("/{sl_id}/product/{barcode_or_id}", api.addProductToShoppingList)
+		r.Delete("/{sl_id}/product/{barcode_or_id}", api.deleteProductFromShoppingList)
+		r.Post("/{sl_id}/product/{product_id}/check", api.toggleProductStateInShoppingList)
+	})
 
-	api.router.Get("/api/v1/shopping-list/{id}/product", api.getShoppingListProducts)
-	api.router.Post("/api/v1/shopping-list/{sl_id}/product/{barcode_or_id}", api.addProductToShoppingList)
-	api.router.Delete("/api/v1/shopping-list/{sl_id}/product/{barcode_or_id}", api.deleteProductFromShoppingList)
-	api.router.Post("/api/v1/shopping-list/{sl_id}/product/{product_id}/check", api.toggleProductStateInShoppingList)
-
-	api.router.Get("/api/v1/statistic/{date_from}/{date_to}", api.getStatistic)
+	api.router.Route("/api/v1/statistic", func(r chi.Router) {
+		r.Get("/{date_from}/{date_to}", api.getStatistic)
+	})
 
 	return api
 }
