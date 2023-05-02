@@ -32,6 +32,8 @@ func (ab AppBot) Run() error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
+	ab.logger.Info().Msg("Bot was started")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -60,6 +62,10 @@ func (ab AppBot) Run() error {
 	}
 
 	return nil
+}
+
+func (ab AppBot) Shutdown() {
+	ab.bot.StopReceivingUpdates()
 }
 
 func (ab AppBot) onStartHandler(msg *tgbotapi.Message) error {

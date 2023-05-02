@@ -1,12 +1,10 @@
 package api
 
 import (
-	"bybarcode/internal/products"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,10 +12,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
 	"bybarcode/internal/config"
 	"bybarcode/internal/db"
+	"bybarcode/internal/products"
 )
 
 type AppApi struct {

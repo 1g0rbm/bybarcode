@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -35,7 +37,19 @@ func main() {
 
 	app := bot.NewAppBot(botApi, logger, cfg, conn)
 
-	if err = app.Run(); err != nil {
-		logger.Fatal().Msg(err.Error())
-	}
+	go func() {
+		if err = app.Run(); err != nil {
+			logger.Fatal().Msgf("Bot starting error: %s", err.Error())
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info().Msg("Stopping bot...")
+
+	app.Shutdown()
+
+	logger.Info().Msg("Bot was stopped.")
 }
