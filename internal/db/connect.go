@@ -16,6 +16,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+type Events struct {
+	ids chan int64
+}
+
 type Connect struct {
 	sql *sql.DB
 }
@@ -403,10 +407,6 @@ func (c *Connect) AddProductToShoppingListByIds(ctx context.Context, productId i
 		return ErrDuplicateKey
 	}
 
-	if err = c.addedUpdStatisticByShoppingList(ctx, tx, listId); err != nil {
-		return err
-	}
-
 	err = tx.Commit()
 
 	return err
@@ -465,48 +465,18 @@ func (c *Connect) GetShoppingListProducts(ctx context.Context, slId int64) ([]pr
 }
 
 func (c *Connect) DeleteProductFromShoppingList(ctx context.Context, slId int64, pId int64) error {
-	tx, err := c.sql.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-			return
-		}
-		err = tx.Commit()
-	}()
-
-	stmt, err := tx.PrepareContext(ctx, deleteProductFromShoppingList())
+	stmt, err := c.sql.PrepareContext(ctx, deleteProductFromShoppingList())
 	if err != nil {
 		return err
 	}
 
 	_, err = stmt.ExecContext(ctx, slId, pId)
 
-	if err = c.addedUpdStatisticByShoppingList(ctx, tx, slId); err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-
 	return err
 }
 
 func (c *Connect) ToggleProductStateInShoppingList(ctx context.Context, slId int64, pId int64) error {
-	tx, err := c.sql.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-			return
-		}
-		err = tx.Commit()
-	}()
-
-	stmt, err := tx.PrepareContext(ctx, toggleProductStateInList())
+	stmt, err := c.sql.PrepareContext(ctx, toggleProductStateInList())
 	if err != nil {
 		return err
 	}
@@ -515,17 +485,7 @@ func (c *Connect) ToggleProductStateInShoppingList(ctx context.Context, slId int
 		_slId int64
 		_pId  int64
 	)
-	if err = stmt.QueryRowContext(ctx, slId, pId).Scan(&_slId, &_pId); err != nil {
-		return err
-	}
-
-	if err = c.addedUpdStatisticByShoppingList(ctx, tx, slId); err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-
-	return err
+	return stmt.QueryRowContext(ctx, slId, pId).Scan(&_slId, &_pId)
 }
 
 func (c *Connect) GetStatistic(ctx context.Context, from time.Time, to time.Time) ([]stat.Statistic, error) {
@@ -578,8 +538,8 @@ func (c *Connect) GetStatistic(ctx context.Context, from time.Time, to time.Time
 	return sList, err
 }
 
-func (c *Connect) addedUpdStatisticByShoppingList(ctx context.Context, tx *sql.Tx, listId int64) error {
-	statStmt, err := tx.PrepareContext(ctx, updateStatByAddingProduct())
+func (c *Connect) AddedUpdStatisticByShoppingList(ctx context.Context, listId int64) error {
+	statStmt, err := c.sql.PrepareContext(ctx, updateStatByAddingProduct())
 	if err != nil {
 		return err
 	}

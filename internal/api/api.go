@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bybarcode/internal/listener"
 	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,7 +13,6 @@ import (
 )
 
 type AppApi struct {
-	db     db.Connect
 	cfg    *config.ApiConfig
 	logger zerolog.Logger
 	router *chi.Mux
@@ -22,6 +22,7 @@ type AppApi struct {
 type handlers struct {
 	db       db.Connect
 	logger   zerolog.Logger
+	listener *listener.EventListener
 	response response
 }
 
@@ -30,11 +31,12 @@ type middlewares struct {
 	logger zerolog.Logger
 }
 
-func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *AppApi {
+func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger, l *listener.EventListener) *AppApi {
 	r := chi.NewRouter()
 	h := handlers{
-		db:     db,
-		logger: logger,
+		db:       db,
+		logger:   logger,
+		listener: l,
 		response: response{
 			logger: logger,
 		},
@@ -45,7 +47,6 @@ func NewAppApi(db db.Connect, cfg *config.ApiConfig, logger zerolog.Logger) *App
 	}
 
 	api := &AppApi{
-		db:     db,
 		cfg:    cfg,
 		logger: logger,
 		router: r,
@@ -94,9 +95,5 @@ func (aa *AppApi) Run() error {
 }
 
 func (aa *AppApi) ShoutDown(ctx context.Context) error {
-	if err := aa.db.Close(); err != nil {
-		return err
-	}
-
 	return aa.server.Shutdown(ctx)
 }

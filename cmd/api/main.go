@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bybarcode/internal/listener"
 	"context"
 	"errors"
 	"net/http"
@@ -34,11 +35,22 @@ func main() {
 		logger.Fatal().Msg(err.Error())
 	}
 
-	apiApp := api.NewAppApi(conn, cfg, logger)
+	l := listener.NewEventListener(&conn)
+
+	apiApp := api.NewAppApi(conn, cfg, logger, l)
 
 	go func() {
 		if err = apiApp.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal().Msgf("Api starting error: %s", err.Error())
+		}
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := l.Listen(ctx); err != nil {
+			logger.Fatal().Msg(err.Error())
 		}
 	}()
 
@@ -47,9 +59,6 @@ func main() {
 	<-quit
 
 	logger.Info().Msg("Stopping api...")
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	if err = apiApp.ShoutDown(ctx); err != nil {
 		logger.Fatal().Msgf("Api stopping error: %s", err.Error())

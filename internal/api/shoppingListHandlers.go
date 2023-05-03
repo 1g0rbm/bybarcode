@@ -152,6 +152,8 @@ func (h *handlers) addProductToShoppingList(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	h.listener.Notify(slId)
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -176,6 +178,8 @@ func (h *handlers) deleteProductFromShoppingList(w http.ResponseWriter, r *http.
 		h.response.json(w, http.StatusInternalServerError, []byte("internal server error"))
 		return
 	}
+
+	h.listener.Notify(slId)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -231,6 +235,8 @@ func (h *handlers) toggleProductStateInShoppingList(w http.ResponseWriter, r *ht
 		h.response.json(w, http.StatusInternalServerError, []byte("internal server error"))
 		return
 	}
+
+	h.listener.Notify(slId)
 
 	w.WriteHeader(http.StatusNoContent)
 }
