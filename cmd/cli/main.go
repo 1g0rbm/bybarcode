@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"sync"
 
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -13,6 +15,12 @@ import (
 
 	"bybarcode/internal/config"
 	"bybarcode/internal/db"
+	"bybarcode/internal/products"
+)
+
+const (
+	lineChBufferSize = 2000
+	numWorkers       = 16
 )
 
 func main() {
@@ -31,7 +39,14 @@ func main() {
 				Name:    "load",
 				Aliases: []string{"l"},
 				Usage:   "Load products data to DB from file.",
-				Action:  helloCommand,
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:  "workers",
+						Value: numWorkers,
+						Usage: "Number of worker goroutines to use",
+					},
+				},
+				Action: loadCommand,
 			},
 		},
 	}
@@ -41,7 +56,7 @@ func main() {
 	}
 }
 
-func helloCommand(c *cli.Context) error {
+func loadCommand(c *cli.Context) error {
 	cfg := config.NewCliConfig()
 
 	conn, err := db.NewConnect("pgx", cfg.DBDsn)
@@ -61,66 +76,118 @@ func helloCommand(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func(file *os.File) {
+		err = file.Close()
+	}(file)
 
-	brands := map[string]int{}
-	categories := map[string]int{}
+	lineCh := make(chan []string, lineChBufferSize)
+	errCh := make(chan error)
 
-	reader := csv.NewReader(file)
-	reader.Comma = '\t'
-	_, err = reader.Read()
+	go func() {
+		reader := csv.NewReader(file)
+		reader.Comma = '\t'
+		defer close(lineCh)
+
+		_, err = reader.Read()
+		if err != nil {
+			errCh <- err
+		}
+
+		for {
+			line, err := reader.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				fmt.Printf("****\nPARSE ERR: %s\n****\n", err)
+				continue
+			}
+
+			lineCh <- line
+		}
+		return
+	}()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i += 1 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case line := <-lineCh:
+					if err = handleLine(c.Context, &conn, line); err != nil {
+						errCh <- err
+					}
+				case <-c.Context.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	for {
+		select {
+		case err = <-errCh:
+			return err
+		}
+	}
+}
+
+func handleLine(
+	ctx context.Context,
+	conn *db.Connect,
+	line []string,
+) error {
+	brandName := line[6]
+	if brandName == "" {
+		brandName = "unknown brand"
+	}
+
+	brandId, err := conn.CreateBrand(ctx, brandName)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for {
-		line, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		fmt.Println(line)
-		brandName := line[6]
-		if brandName == "" {
-			brandName = "unknown brand"
-		}
-
-		brandId, ok := brands[brandName]
-		if !ok {
-
-			brandId, err = conn.CreateBrand(ctx, brandName)
-			if err != nil {
-				return err
-			}
-			brands[brandName] = brandId
-		}
-
-		categoryName := line[4]
-		if categoryName == "" {
-			categoryName = "unknown category"
-		}
-
-		categoryId, ok := categories[categoryName]
-		if !ok {
-			categoryId, err = conn.CreateCategory(ctx, categoryName)
-			if err != nil {
-				return err
-			}
-			categories[categoryName] = categoryId
-		}
-
-		fmt.Println(categoryId)
-		fmt.Println(brandId)
-		fmt.Println(categories)
-		fmt.Println(brands)
-
-		break
+	categoryName := line[4]
+	if categoryName == "" {
+		categoryName = "unknown category"
 	}
 
-	return err
+	categoryId, err := conn.CreateCategory(ctx, categoryName)
+	if err != nil {
+		return err
+	}
+
+	id, err := strconv.ParseInt(line[0], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	barcode, err := strconv.ParseInt(line[1], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	p := products.Product{
+		ID:         id,
+		Upcean:     barcode,
+		Name:       line[2],
+		CategoryId: int64(categoryId),
+		BrandId:    int64(brandId),
+	}
+
+	_, err = conn.CreateProduct(ctx, p)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Loaded product %v\n", p)
+
+	return nil
 }

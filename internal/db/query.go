@@ -7,6 +7,7 @@ func CreateBrand() string {
 INSERT INTO brands
 	(name)
 	VALUES ($1)
+	ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name
 	RETURNING id;
 `
 	return strings.Trim(query, " ")
@@ -14,9 +15,10 @@ INSERT INTO brands
 
 func CreateCategory() string {
 	query := `
-INSERT INTO brands
+INSERT INTO categories
 	(name)
 	VALUES ($1)
+	ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name
 	RETURNING id;
 `
 	return strings.Trim(query, " ")
