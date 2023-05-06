@@ -110,10 +110,6 @@ func (c *Connect) CreateProduct(ctx context.Context, p products.Product) (int64,
 		return 0, err
 	}
 
-	if err = stmt.Close(); err != nil {
-		return 0, err
-	}
-
 	return productId, nil
 }
 

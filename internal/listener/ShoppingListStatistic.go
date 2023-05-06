@@ -3,6 +3,7 @@ package listener
 import (
 	"bybarcode/internal/db"
 	"context"
+	"time"
 )
 
 type EventListener struct {
@@ -30,8 +31,13 @@ func (e *EventListener) Listen(ctx context.Context) error {
 	}
 }
 
-func (e *EventListener) Notify(slId int64) {
-	go func() {
-		e.slIdChan <- slId
-	}()
+func (e *EventListener) Notify(ctx context.Context, slId int64) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	select {
+	case e.slIdChan <- slId:
+	case <-ctx.Done():
+		return
+	}
 }

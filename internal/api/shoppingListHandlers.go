@@ -152,7 +152,7 @@ func (h *handlers) addProductToShoppingList(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	h.listener.Notify(slId)
+	h.listener.Notify(r.Context(), slId)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -179,7 +179,7 @@ func (h *handlers) deleteProductFromShoppingList(w http.ResponseWriter, r *http.
 		return
 	}
 
-	h.listener.Notify(slId)
+	h.listener.Notify(r.Context(), slId)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -236,7 +236,7 @@ func (h *handlers) toggleProductStateInShoppingList(w http.ResponseWriter, r *ht
 		return
 	}
 
-	h.listener.Notify(slId)
+	h.listener.Notify(r.Context(), slId)
 
 	w.WriteHeader(http.StatusNoContent)
 }

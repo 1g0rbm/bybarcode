@@ -35,9 +35,6 @@ type middlewares struct {
 
 func NewAppApi(cfg *config.ApiConfig, logger zerolog.Logger) *AppApi {
 	conn, err := db.NewConnect("pgx", cfg.DBDsn)
-	defer func(conn *db.Connect) {
-		err = conn.Close()
-	}(&conn)
 	if err != nil {
 		logger.Fatal().Msg(err.Error())
 	}

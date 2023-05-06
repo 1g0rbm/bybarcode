@@ -21,12 +21,11 @@ type AppBot struct {
 
 func NewAppBot(logger zerolog.Logger, cfg *config.BotConfig) *AppBot {
 	conn, err := db.NewConnect("pgx", cfg.DBDsn)
-	defer func(conn *db.Connect) {
-		err = conn.Close()
-	}(&conn)
+	if err != nil {
+		logger.Fatal().Msg(err.Error())
+	}
 
 	botApi, err := tgbotapi.NewBotAPI(cfg.Token)
-
 	if err != nil {
 		logger.Fatal().Msg(err.Error())
 	}

@@ -19,6 +19,7 @@ func (m *middlewares) authMiddleware(h http.Handler) http.Handler {
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
+
 		_, err := m.db.FindNotExpiredSession(r.Context(), token)
 		if err != nil {
 			m.logger.Error().Msg(err.Error())
