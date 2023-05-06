@@ -19,12 +19,23 @@ type AppBot struct {
 	db     db.Connect
 }
 
-func NewAppBot(bot *tgbotapi.BotAPI, logger zerolog.Logger, cfg *config.BotConfig, db db.Connect) *AppBot {
+func NewAppBot(logger zerolog.Logger, cfg *config.BotConfig) *AppBot {
+	conn, err := db.NewConnect("pgx", cfg.DBDsn)
+	defer func(conn *db.Connect) {
+		err = conn.Close()
+	}(&conn)
+
+	botApi, err := tgbotapi.NewBotAPI(cfg.Token)
+
+	if err != nil {
+		logger.Fatal().Msg(err.Error())
+	}
+
 	return &AppBot{
-		bot:    bot,
+		bot:    botApi,
 		logger: logger,
 		cfg:    cfg,
-		db:     db,
+		db:     conn,
 	}
 }
 
@@ -64,8 +75,14 @@ func (ab AppBot) Run() error {
 	return nil
 }
 
-func (ab AppBot) Shutdown() {
+func (ab AppBot) Shutdown() error {
+	if err := ab.db.Close(); err != nil {
+		return err
+	}
+
 	ab.bot.StopReceivingUpdates()
+
+	return nil
 }
 
 func (ab AppBot) onStartHandler(msg *tgbotapi.Message) error {

@@ -5,13 +5,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/joho/godotenv"
-	"github.com/rs/zerolog"
-	tgbotapi "gitlab.com/kingofsystem/telegram-bot-api/v5"
-
 	"bybarcode/internal/bot"
 	"bybarcode/internal/config"
-	"bybarcode/internal/db"
+	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
 )
 
 func main() {
@@ -23,22 +20,10 @@ func main() {
 	}
 
 	cfg := config.NewBotConfig()
-
-	conn, err := db.NewConnect("pgx", cfg.DBDsn)
-	defer func(conn *db.Connect) {
-		err = conn.Close()
-	}(&conn)
-
-	botApi, err := tgbotapi.NewBotAPI(cfg.Token)
-
-	if err != nil {
-		logger.Fatal().Msg(err.Error())
-	}
-
-	app := bot.NewAppBot(botApi, logger, cfg, conn)
+	app := bot.NewAppBot(logger, cfg)
 
 	go func() {
-		if err = app.Run(); err != nil {
+		if err := app.Run(); err != nil {
 			logger.Fatal().Msgf("Bot starting error: %s", err.Error())
 		}
 	}()

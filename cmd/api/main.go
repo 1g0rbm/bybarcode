@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bybarcode/internal/listener"
 	"context"
 	"errors"
 	"net/http"
@@ -14,10 +13,12 @@ import (
 
 	"bybarcode/internal/api"
 	"bybarcode/internal/config"
-	"bybarcode/internal/db"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	logger := zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 	if err := godotenv.Load(); err != nil {
@@ -26,31 +27,11 @@ func main() {
 	}
 
 	cfg := config.NewApiConfig()
-
-	conn, err := db.NewConnect("pgx", cfg.DBDsn)
-	defer func(conn *db.Connect) {
-		err = conn.Close()
-	}(&conn)
-	if err != nil {
-		logger.Fatal().Msg(err.Error())
-	}
-
-	l := listener.NewEventListener(&conn)
-
-	apiApp := api.NewAppApi(conn, cfg, logger, l)
+	apiApp := api.NewAppApi(cfg, logger)
 
 	go func() {
-		if err = apiApp.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := apiApp.Run(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatal().Msgf("Api starting error: %s", err.Error())
-		}
-	}()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		if err := l.Listen(ctx); err != nil {
-			logger.Fatal().Msg(err.Error())
 		}
 	}()
 
@@ -60,7 +41,7 @@ func main() {
 
 	logger.Info().Msg("Stopping api...")
 
-	if err = apiApp.ShoutDown(ctx); err != nil {
+	if err := apiApp.ShoutDown(ctx); err != nil {
 		logger.Fatal().Msgf("Api stopping error: %s", err.Error())
 	}
 
