@@ -1,0 +1,101 @@
+### Api ping
+GET http://localhost:8080/api/v1/ping
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+#
+##
+#
+
+### Get product by barcode
+GET http://localhost:8080/api/v1/product/49705696088
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Creatre product
+POST http://localhost:8080/api/v1/product
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "name": "TEST",
+  "upcean": 49705696088,
+  "category_id": 463,
+  "brand_id": 909
+}
+
+### Update product
+PUT http://localhost:8080/api/v1/product
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "id": 5006351,
+  "name": "NO_TEST",
+  "upcean": 49705696088,
+  "category_id": 463,
+  "brand_id": 909
+}
+
+### Delete product by id
+DELETE http://localhost:8080/api/v1/product/5006351
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+#
+##
+#
+
+### Get account's shopping lists
+GET http://localhost:8080/api/v1/shopping-lists/233575306
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Creatre shopping list
+POST http://localhost:8080/api/v1/shopping-list
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "name": "TEST_SHOPPING_LI",
+  "account_id": 233575306
+}
+
+### Update shopping list
+PUT http://localhost:8080/api/v1/shopping-list
+Content-Type: application/json
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+{
+  "id": 1,
+  "name": "TEST_SHOPPING_LILI",
+  "account_id": 233575306
+}
+
+### Delete shopping list by id
+DELETE http://localhost:8080/api/v1/shopping-list/8
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+#
+##
+#
+
+### Add product to shopping list
+POST http://localhost:8080/api/v1/shopping-list/1/product/5006321
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Get shopping list's products
+GET http://localhost:8080/api/v1/shopping-list/1/product
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Delete product from shopping list
+DELETE http://localhost:8080/api/v1/shopping-list/1/product/5006322
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+### Toggle product's state in shopping list
+POST http://localhost:8080/api/v1/shopping-list/1/product/5006321/check
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
+
+#
+##
+#
+
+### Get statistics
+GET http://localhost:8080/api/v1/statistic/2023-05-01T08:30:00/2023-05-02T16:45:00
+Authorization: Bearer 553a11cf-3c0e-4c9b-b5be-8065952a7927
